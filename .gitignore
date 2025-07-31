@@ -1,0 +1,7 @@
+/target
+.env
+.env.local
+*.pem
+*.key
+wallet.json
+keypair.json
