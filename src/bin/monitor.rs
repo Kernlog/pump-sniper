@@ -1,7 +1,7 @@
 //! Monitor  - Track Pump token creations and mcs
 
 use anyhow::Result;
-use asuga_trial::{
+use pump_sniper::{
     common::{Config, SniperEvent, StreamClient, MarketData},
     utils::{TransactionExecutor, PriceFetcher},
     accounts::TokenInfo,

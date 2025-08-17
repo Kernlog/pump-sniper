@@ -67,7 +67,7 @@ impl Sniper {
     }
 
     pub async fn start(&mut self) -> Result<(), SniperError> {
-        info!("Starting Asuga Trial Sniper Bot");
+        info!("Starting Pump Sniper Bot");
         info!("Market cap threshold: ${:.2} USD", self.config.market_cap_threshold_usd_display());
         info!("Buy amount: {:.2} SOL", self.config.buy_amount_sol_display());
         info!("Priority fee: {:.3} SOL", self.config.priority_fee_sol_display());

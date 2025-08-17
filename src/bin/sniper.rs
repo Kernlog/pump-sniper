@@ -1,7 +1,7 @@
 //! Sniper with wallet setup
 
 use anyhow::Result;
-use asuga_trial::{common::Config, Sniper};
+use pump_sniper::{common::Config, Sniper};
 use solana_sdk::{signature::Keypair, signer::Signer};
 use std::env;
 use tracing::{error, info};

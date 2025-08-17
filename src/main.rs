@@ -1,7 +1,7 @@
 use anyhow::Result;
-use asuga_trial;
+use pump_sniper;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    asuga_trial::run().await
+    pump_sniper::run().await
 }
