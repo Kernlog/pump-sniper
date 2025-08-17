@@ -40,10 +40,12 @@ impl StreamClient {
 
         info!("CONNECTED to gRPC endpoint");
 
-        let _ = self.event_sender.send(SniperEvent::ConnectionStatusChanged {
-            connected: true,
-            endpoint: self.config.grpc_endpoint.clone(),
-        });
+        let _ = self
+            .event_sender
+            .send(SniperEvent::ConnectionStatusChanged {
+                connected: true,
+                endpoint: self.config.grpc_endpoint.clone(),
+            });
 
         let (mut subscribe_tx, mut subscribe_rx) = client
             .subscribe()
@@ -51,7 +53,7 @@ impl StreamClient {
             .map_err(|e| SniperError::GrpcConnectionFailed(e.to_string()))?;
 
         let request = self.create_subscription_request();
-        
+
         subscribe_tx
             .send(request)
             .await
@@ -68,14 +70,16 @@ impl StreamClient {
                 }
                 Err(e) => {
                     error!("Stream error: {}", e);
-                    
-                    let _ = self.event_sender.send(SniperEvent::ConnectionStatusChanged {
-                        connected: false,
-                        endpoint: self.config.grpc_endpoint.clone(),
-                    });
-                    
+
+                    let _ = self
+                        .event_sender
+                        .send(SniperEvent::ConnectionStatusChanged {
+                            connected: false,
+                            endpoint: self.config.grpc_endpoint.clone(),
+                        });
+
                     tokio::time::sleep(tokio::time::Duration::from_millis(5000)).await;
-                    
+
                     return Err(SniperError::GrpcConnectionFailed(e.to_string()));
                 }
             }
@@ -94,15 +98,11 @@ impl StreamClient {
                 SubscribeRequestFilterAccounts {
                     account: vec![],
                     owner: vec![PUMPFUN_PROGRAM_ID.to_string()],
-                    filters: vec![
-                        SubscribeRequestFilterAccountsFilter {
-                            filter: Some(
-                                subscribe_request_filter_accounts_filter::Filter::Datasize(
-                                    8 + 32 + 32 + 8 + 8 + 8 + 8 + 1 // BondingCurveAccount size
-                                )
-                            ),
-                        },
-                    ],
+                    filters: vec![SubscribeRequestFilterAccountsFilter {
+                        filter: Some(subscribe_request_filter_accounts_filter::Filter::Datasize(
+                            8 + 32 + 32 + 8 + 8 + 8 + 8 + 1, // BondingCurveAccount size
+                        )),
+                    }],
                 },
             )]
             .into(),
@@ -137,9 +137,7 @@ impl StreamClient {
             Some(subscribe_update::UpdateOneof::Account(account)) => {
                 self.handle_account_update(account).await
             }
-            Some(subscribe_update::UpdateOneof::Ping(_)) => {
-                Ok(())
-            }
+            Some(subscribe_update::UpdateOneof::Ping(_)) => Ok(()),
             _ => Ok(()),
         }
     }
@@ -149,12 +147,17 @@ impl StreamClient {
             if let Some(ref meta) = transaction_info.meta {
                 if meta.err.is_none() {
                     let signature = bs58::encode(&transaction_info.signature).into_string();
-                    
+
                     if parser::is_create_transaction(&transaction_info) {
                         info!("TOKEN CREATION DETECTED: {}", signature);
-                        
-                        if let Some(token_info) = parser::parse_token_creation(&transaction_info, signature) {
-                            if let Err(e) = self.event_sender.send(SniperEvent::TokenCreated(token_info)) {
+
+                        if let Some(token_info) =
+                            parser::parse_token_creation(&transaction_info, signature)
+                        {
+                            if let Err(e) = self
+                                .event_sender
+                                .send(SniperEvent::TokenCreated(token_info))
+                            {
                                 error!("Failed to send token creation event: {}", e);
                             }
                         }
@@ -169,16 +172,19 @@ impl StreamClient {
         if let Some(account_info) = account_update.account {
             let account_key = bs58::encode(&account_info.pubkey).into_string();
             if let Ok(pubkey) = account_key.parse::<solana_sdk::pubkey::Pubkey>() {
-                match solana_sdk::borsh1::try_from_slice_unchecked::<crate::accounts::BondingCurveAccount>(&account_info.data) {
-                    Ok(bonding_curve_data) => {
-                        if let Err(e) = self.event_sender.send(crate::common::SniperEvent::BondingCurveUpdated {
-                            bonding_curve: pubkey,
-                            data: bonding_curve_data,
-                        }) {
-                            error!("Failed to send bonding curve update: {}", e);
-                        }
+                if let Ok(bonding_curve_data) = solana_sdk::borsh1::try_from_slice_unchecked::<
+                    crate::accounts::BondingCurveAccount,
+                >(&account_info.data)
+                {
+                    if let Err(e) =
+                        self.event_sender
+                            .send(crate::common::SniperEvent::BondingCurveUpdated {
+                                bonding_curve: pubkey,
+                                data: bonding_curve_data,
+                            })
+                    {
+                        error!("Failed to send bonding curve update: {}", e);
                     }
-                    Err(_) => {}
                 }
             }
         }

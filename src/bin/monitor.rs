@@ -2,14 +2,14 @@
 
 use anyhow::Result;
 use pump_sniper::{
-    common::{Config, SniperEvent, StreamClient, MarketData},
-    utils::{TransactionExecutor, PriceFetcher},
     accounts::TokenInfo,
+    common::{Config, MarketData, SniperEvent, StreamClient},
+    utils::{PriceFetcher, TransactionExecutor},
 };
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 use tokio::sync::mpsc;
 use tracing::{error, info, warn};
-use std::time::{Duration, Instant};
 
 struct TokenTracker {
     token_info: TokenInfo,
@@ -44,7 +44,8 @@ impl TokenTracker {
         if self.initial_market_cap_usd == 0.0 {
             return 0.0;
         }
-        ((self.current_market_cap_usd - self.initial_market_cap_usd) / self.initial_market_cap_usd) * 100.0
+        ((self.current_market_cap_usd - self.initial_market_cap_usd) / self.initial_market_cap_usd)
+            * 100.0
     }
 }
 
@@ -57,13 +58,10 @@ struct MonitorBot {
 }
 
 impl MonitorBot {
-    fn new(
-        event_receiver: mpsc::UnboundedReceiver<SniperEvent>,
-        config: Config,
-    ) -> Self {
+    fn new(event_receiver: mpsc::UnboundedReceiver<SniperEvent>, config: Config) -> Self {
         let transaction_executor = TransactionExecutor::new(config);
         let price_fetcher = PriceFetcher::new();
-        
+
         Self {
             tracked_tokens: HashMap::new(),
             event_receiver,
@@ -83,7 +81,7 @@ impl MonitorBot {
 
         let mut last_update_check = Instant::now();
         let mut last_display_refresh = Instant::now();
-        
+
         loop {
             // Check for new events (non-blocking)
             while let Ok(event) = self.event_receiver.try_recv() {
@@ -121,36 +119,56 @@ impl MonitorBot {
         println!("{}", "=".repeat(120));
         println!(
             "{:<45} {:<15} {:<12} {:<12} {:<12} {:<8} {:<10}",
-            "TOKEN (SYMBOL)", "MINT ADDRESS", "INITIAL MC", "CURRENT MC", "CHANGE %", "AGE (s)", "STATUS"
+            "TOKEN (SYMBOL)",
+            "MINT ADDRESS",
+            "INITIAL MC",
+            "CURRENT MC",
+            "CHANGE %",
+            "AGE (s)",
+            "STATUS"
         );
         println!("{}", "-".repeat(120));
     }
 
     async fn handle_new_token(&mut self, token_info: TokenInfo) {
-        info!("New token detected: {} ({})", token_info.name, token_info.symbol);
-        
+        info!(
+            "New token detected: {} ({})",
+            token_info.name, token_info.symbol
+        );
+
         // Small delay to allow bonding curve to be created
         tokio::time::sleep(tokio::time::Duration::from_millis(1000)).await;
-        
+
         // Try to get actual bonding curve data first (current state)
-        match self.transaction_executor.fetch_bonding_curve_data(&token_info.bonding_curve).await {
+        match self
+            .transaction_executor
+            .fetch_bonding_curve_data(&token_info.bonding_curve)
+            .await
+        {
             Ok(bonding_curve_data) => {
                 let market_cap_sol = bonding_curve_data.get_market_cap_sol();
-                
-                match self.price_fetcher.calculate_market_cap_usd(market_cap_sol).await {
+
+                match self
+                    .price_fetcher
+                    .calculate_market_cap_usd(market_cap_sol)
+                    .await
+                {
                     Ok(market_cap_usd) => {
                         // Add to tracking
                         let tracker = TokenTracker::new(token_info.clone(), market_cap_usd);
-                        self.tracked_tokens.insert(token_info.mint.to_string(), tracker);
-                        
+                        self.tracked_tokens
+                            .insert(token_info.mint.to_string(), tracker);
+
                         info!(
                             "{} added to tracking - Initial MC: ${:.2}",
-                            token_info.symbol,
-                            market_cap_usd
+                            token_info.symbol, market_cap_usd
                         );
                     }
                     Err(e) => {
-                        error!("Failed to calculate market cap in USD for {}: {}", token_info.symbol, e);
+                        error!(
+                            "Failed to calculate market cap in USD for {}: {}",
+                            token_info.symbol, e
+                        );
                     }
                 }
             }
@@ -159,16 +177,20 @@ impl MonitorBot {
                 match self.transaction_executor.fetch_global_account().await {
                     Ok(global_account) => {
                         let market_cap_sol = global_account.get_initial_market_cap_sol();
-                        
-                        match self.price_fetcher.calculate_market_cap_usd(market_cap_sol).await {
+
+                        match self
+                            .price_fetcher
+                            .calculate_market_cap_usd(market_cap_sol)
+                            .await
+                        {
                             Ok(market_cap_usd) => {
                                 let tracker = TokenTracker::new(token_info.clone(), market_cap_usd);
-                                self.tracked_tokens.insert(token_info.mint.to_string(), tracker);
-                                
+                                self.tracked_tokens
+                                    .insert(token_info.mint.to_string(), tracker);
+
                                 info!(
                                     "{} added to tracking (fallback) - Initial MC: ${:.2}",
-                                    token_info.symbol,
-                                    market_cap_usd
+                                    token_info.symbol, market_cap_usd
                                 );
                             }
                             Err(e2) => {
@@ -178,8 +200,10 @@ impl MonitorBot {
                         }
                     }
                     Err(e2) => {
-                        error!("Failed to add {} to tracking: bonding: {}, global: {}", 
-                               token_info.symbol, e, e2);
+                        error!(
+                            "Failed to add {} to tracking: bonding: {}, global: {}",
+                            token_info.symbol, e, e2
+                        );
                     }
                 }
             }
@@ -188,28 +212,35 @@ impl MonitorBot {
 
     async fn handle_market_cap_update(&mut self, market_data: MarketData) {
         let mint_str = market_data.token_info.mint.to_string();
-        
+
         if let Some(tracker) = self.tracked_tokens.get_mut(&mint_str) {
             // Convert SOL market cap to USD
-            match self.price_fetcher.calculate_market_cap_usd(market_data.current_market_cap_sol).await {
+            match self
+                .price_fetcher
+                .calculate_market_cap_usd(market_data.current_market_cap_sol)
+                .await
+            {
                 Ok(market_cap_usd) => {
                     let old_market_cap = tracker.current_market_cap_usd;
                     tracker.update_market_cap(market_cap_usd);
-                    
+
                     // Only print if there's a significant change (>1% or >$50)
-                    let change_percent = ((market_cap_usd - old_market_cap) / old_market_cap).abs() * 100.0;
+                    let change_percent =
+                        ((market_cap_usd - old_market_cap) / old_market_cap).abs() * 100.0;
                     let change_usd = (market_cap_usd - old_market_cap).abs();
-                    
+
                     if change_percent > 1.0 || change_usd > 50.0 {
-                        let change_str = if tracker.current_market_cap_usd > tracker.initial_market_cap_usd {
-                            format!("🟢+{:.2}%", tracker.market_cap_change_percent())
-                        } else {
-                            format!("🔴{:.2}%", tracker.market_cap_change_percent())
-                        };
-                        
+                        let change_str =
+                            if tracker.current_market_cap_usd > tracker.initial_market_cap_usd {
+                                format!("🟢+{:.2}%", tracker.market_cap_change_percent())
+                            } else {
+                                format!("🔴{:.2}%", tracker.market_cap_change_percent())
+                            };
+
                         println!(
                             "{:<45} {:<15} {:<12.2} {:<12.2} {:<12} {:<8} {:<10}",
-                            format!("{} ({})", 
+                            format!(
+                                "{} ({})",
                                 truncate_string(&tracker.token_info.name, 25),
                                 &tracker.token_info.symbol
                             ),
@@ -237,25 +268,38 @@ impl MonitorBot {
                 continue;
             }
 
-            match self.transaction_executor.fetch_bonding_curve_data(&tracker.token_info.bonding_curve).await {
+            match self
+                .transaction_executor
+                .fetch_bonding_curve_data(&tracker.token_info.bonding_curve)
+                .await
+            {
                 Ok(bonding_curve_data) => {
                     let market_cap_sol = bonding_curve_data.get_market_cap_sol();
-                    
-                    match self.price_fetcher.calculate_market_cap_usd(market_cap_sol).await {
+
+                    match self
+                        .price_fetcher
+                        .calculate_market_cap_usd(market_cap_sol)
+                        .await
+                    {
                         Ok(market_cap_usd) => {
                             let old_market_cap = tracker.current_market_cap_usd;
                             tracker.update_market_cap(market_cap_usd);
-                            
+
                             // Log significant changes (>5% or >$100)
-                            let change_percent = ((market_cap_usd - old_market_cap) / old_market_cap).abs() * 100.0;
+                            let change_percent =
+                                ((market_cap_usd - old_market_cap) / old_market_cap).abs() * 100.0;
                             let change_usd = (market_cap_usd - old_market_cap).abs();
-                            
+
                             if change_percent > 5.0 || change_usd > 100.0 {
                                 info!(
                                     "{} market cap updated: ${:.2} ({}{}%)",
                                     tracker.token_info.symbol,
                                     market_cap_usd,
-                                    if market_cap_usd > old_market_cap { "+" } else { "" },
+                                    if market_cap_usd > old_market_cap {
+                                        "+"
+                                    } else {
+                                        ""
+                                    },
                                     (market_cap_usd - old_market_cap) / old_market_cap * 100.0
                                 );
                             }
@@ -263,7 +307,10 @@ impl MonitorBot {
                         Err(e) => {
                             // Don't spam errors, just continue
                             if tracker.age_seconds() % 30 == 0 {
-                                error!("Failed to calculate USD market cap for {}: {}", tracker.token_info.symbol, e);
+                                error!(
+                                    "Failed to calculate USD market cap for {}: {}",
+                                    tracker.token_info.symbol, e
+                                );
                             }
                         }
                     }
@@ -271,11 +318,14 @@ impl MonitorBot {
                 Err(e) => {
                     // Don't spam errors, just continue
                     if tracker.age_seconds() % 30 == 0 {
-                        error!("Failed to fetch bonding curve for {}: {}", tracker.token_info.symbol, e);
+                        error!(
+                            "Failed to fetch bonding curve for {}: {}",
+                            tracker.token_info.symbol, e
+                        );
                     }
                 }
             }
-            
+
             // Small delay between requests to avoid rate limits
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
@@ -293,7 +343,11 @@ impl MonitorBot {
 
         // Sort tokens by market cap (descending)
         let mut tokens: Vec<_> = self.tracked_tokens.iter().collect();
-        tokens.sort_by(|a, b| b.1.current_market_cap_usd.partial_cmp(&a.1.current_market_cap_usd).unwrap());
+        tokens.sort_by(|a, b| {
+            b.1.current_market_cap_usd
+                .partial_cmp(&a.1.current_market_cap_usd)
+                .unwrap()
+        });
 
         // Print all tracked tokens
         for (mint, tracker) in tokens {
@@ -318,7 +372,8 @@ impl MonitorBot {
 
             println!(
                 "{:<45} {:<15} {:<12.2} {:<12.2} {:<12} {:<8} {:<10}",
-                format!("{} ({})", 
+                format!(
+                    "{} ({})",
                     truncate_string(&tracker.token_info.name, 25),
                     &tracker.token_info.symbol
                 ),
@@ -338,7 +393,7 @@ impl MonitorBot {
     fn print_status(&self) {
         let uptime = self.start_time.elapsed().as_secs();
         let tracked_count = self.tracked_tokens.len();
-        
+
         println!("{}", "-".repeat(120));
         println!(
             "Status: {} tokens tracked | Uptime: {}s | Last update: {} | Threshold: $8000",
@@ -380,17 +435,20 @@ async fn main() -> Result<()> {
     info!("Configuration loaded:");
     info!("  gRPC Endpoint: {}", config.grpc_endpoint);
     info!("  RPC Endpoint: {}", config.rpc_endpoint);
-    info!("  Market Cap Threshold: ${:.2} USD", config.market_cap_threshold_usd_display());
+    info!(
+        "  Market Cap Threshold: ${:.2} USD",
+        config.market_cap_threshold_usd_display()
+    );
 
     // Create event channel
     let (event_sender, event_receiver) = mpsc::unbounded_channel();
 
     // Start gRPC streaming
     let mut stream_client = StreamClient::new(config.clone(), event_sender);
-    
+
     // Start monitor bot
     let mut monitor = MonitorBot::new(event_receiver, config);
-    
+
     // Run both concurrently
     tokio::select! {
         result = stream_client.start() => {

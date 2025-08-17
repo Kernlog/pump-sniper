@@ -1,9 +1,7 @@
 //! Transaction parsing utils
 
 use crate::{
-    accounts::TokenInfo,
-    constants::CREATE_DISCRIMINATOR,
-    instructions::CreateInstruction,
+    accounts::TokenInfo, constants::CREATE_DISCRIMINATOR, instructions::CreateInstruction,
     utils::pda::derive_bonding_curve_pda,
 };
 use solana_sdk::pubkey::Pubkey;

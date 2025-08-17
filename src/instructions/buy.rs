@@ -1,5 +1,10 @@
 //! Buy token instruction
 
+use crate::{
+    constants::{accounts, BUY_DISCRIMINATOR},
+    error::SniperError,
+    utils::pda::{derive_bonding_curve_pda, derive_global_pda},
+};
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_sdk::{
     instruction::{AccountMeta, Instruction},
@@ -8,11 +13,6 @@ use solana_sdk::{
     signer::Signer,
 };
 use spl_associated_token_account::get_associated_token_address;
-use crate::{
-    constants::{accounts, BUY_DISCRIMINATOR},
-    error::SniperError,
-    utils::pda::{derive_bonding_curve_pda, derive_global_pda},
-};
 
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
 pub struct BuyInstruction {
@@ -81,11 +81,11 @@ impl BuyInstruction {
 
 fn derive_creator_vault_pda(creator: &Pubkey) -> Result<Pubkey, SniperError> {
     use crate::constants::seeds::CREATOR_VAULT_SEED;
-    
+
     let (creator_vault, _bump) = Pubkey::find_program_address(
         &[CREATOR_VAULT_SEED, creator.as_ref()],
         &accounts::pumpfun_program_id(),
     );
-    
+
     Ok(creator_vault)
 }

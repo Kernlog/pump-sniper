@@ -48,28 +48,33 @@ impl Config {
         }
 
         if let Ok(threshold) = std::env::var("MARKET_CAP_THRESHOLD_USD") {
-            config.market_cap_threshold_usd = threshold.parse()
-                .map_err(|_| SniperError::InvalidConfig("Invalid market cap threshold".to_string()))?;
+            config.market_cap_threshold_usd = threshold.parse().map_err(|_| {
+                SniperError::InvalidConfig("Invalid market cap threshold".to_string())
+            })?;
         }
 
         if let Ok(slippage) = std::env::var("MAX_SLIPPAGE_BPS") {
-            config.max_slippage_bps = slippage.parse()
+            config.max_slippage_bps = slippage
+                .parse()
                 .map_err(|_| SniperError::InvalidConfig("Invalid slippage".to_string()))?;
         }
 
         if let Ok(amount) = std::env::var("BUY_AMOUNT_SOL") {
-            config.buy_amount_sol = amount.parse()
+            config.buy_amount_sol = amount
+                .parse()
                 .map_err(|_| SniperError::InvalidConfig("Invalid buy amount".to_string()))?;
         }
 
         if let Ok(fee) = std::env::var("PRIORITY_FEE_SOL") {
-            config.priority_fee_sol = fee.parse()
+            config.priority_fee_sol = fee
+                .parse()
                 .map_err(|_| SniperError::InvalidConfig("Invalid priority fee".to_string()))?;
         }
 
         if let Ok(limit) = std::env::var("COMPUTE_UNIT_LIMIT") {
-            config.compute_unit_limit = limit.parse()
-                .map_err(|_| SniperError::InvalidConfig("Invalid compute unit limit".to_string()))?;
+            config.compute_unit_limit = limit.parse().map_err(|_| {
+                SniperError::InvalidConfig("Invalid compute unit limit".to_string())
+            })?;
         }
 
         Ok(config)
@@ -78,19 +83,27 @@ impl Config {
     /// Validate configuration
     pub fn validate(&self) -> Result<(), SniperError> {
         if self.market_cap_threshold_usd <= 0.0 {
-            return Err(SniperError::InvalidConfig("Market cap threshold must be positive".to_string()));
+            return Err(SniperError::InvalidConfig(
+                "Market cap threshold must be positive".to_string(),
+            ));
         }
 
         if self.max_slippage_bps > 10000 {
-            return Err(SniperError::InvalidConfig("Slippage cannot exceed 100%".to_string()));
+            return Err(SniperError::InvalidConfig(
+                "Slippage cannot exceed 100%".to_string(),
+            ));
         }
 
         if self.buy_amount_sol == 0 {
-            return Err(SniperError::InvalidConfig("Buy amount cannot be zero".to_string()));
+            return Err(SniperError::InvalidConfig(
+                "Buy amount cannot be zero".to_string(),
+            ));
         }
 
         if self.priority_fee_sol == 0 {
-            return Err(SniperError::InvalidConfig("Priority fee cannot be zero".to_string()));
+            return Err(SniperError::InvalidConfig(
+                "Priority fee cannot be zero".to_string(),
+            ));
         }
 
         Ok(())

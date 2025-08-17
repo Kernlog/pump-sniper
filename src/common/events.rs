@@ -1,6 +1,6 @@
 //! Events
 
-use crate::accounts::{TokenInfo, BondingCurveAccount};
+use crate::accounts::{BondingCurveAccount, TokenInfo};
 use crate::common::MarketData;
 use solana_sdk::pubkey::Pubkey;
 
@@ -57,9 +57,9 @@ impl SniperEvent {
     pub fn is_critical(&self) -> bool {
         matches!(
             self,
-            SniperEvent::BuyTriggered { .. } | 
-            SniperEvent::BuyExecuted { .. } | 
-            SniperEvent::BuyFailed { .. }
+            SniperEvent::BuyTriggered { .. }
+                | SniperEvent::BuyExecuted { .. }
+                | SniperEvent::BuyFailed { .. }
         )
     }
 }

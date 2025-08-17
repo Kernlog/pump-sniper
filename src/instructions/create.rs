@@ -1,8 +1,8 @@
 //! Create token instruction
 
+use crate::constants::CREATE_DISCRIMINATOR;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_sdk::pubkey::Pubkey;
-use crate::constants::CREATE_DISCRIMINATOR;
 
 /// Create token instruction data
 #[derive(BorshSerialize, BorshDeserialize, Debug, Clone)]
@@ -32,7 +32,7 @@ impl CreateInstruction {
         if data.len() < 8 {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                "Data too short"
+                "Data too short",
             ));
         }
 
@@ -40,12 +40,11 @@ impl CreateInstruction {
         if discriminator != Self::discriminator() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
-                "Invalid discriminator"
+                "Invalid discriminator",
             ));
         }
 
-        Self::try_from_slice(&data[8..]).map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string())
-        })
+        Self::try_from_slice(&data[8..])
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e.to_string()))
     }
 }

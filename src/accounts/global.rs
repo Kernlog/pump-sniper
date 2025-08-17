@@ -46,13 +46,13 @@ impl GlobalAccount {
 
     /// Calculate initial market cap for a new token using Pump constants
     pub fn get_initial_market_cap_sol(&self) -> u64 {
-    
         const INITIAL_VIRTUAL_TOKEN_RESERVES: u128 = 1_073_000_000_000_000;
-        const INITIAL_VIRTUAL_SOL_RESERVES: u128 = 30_000_000_000; 
-        const TOKEN_TOTAL_SUPPLY: u128 = 1_000_000_000_000_000; 
+        const INITIAL_VIRTUAL_SOL_RESERVES: u128 = 30_000_000_000;
+        const TOKEN_TOTAL_SUPPLY: u128 = 1_000_000_000_000_000;
 
-        // Market cap 
-        ((TOKEN_TOTAL_SUPPLY * INITIAL_VIRTUAL_SOL_RESERVES) / INITIAL_VIRTUAL_TOKEN_RESERVES) as u64
+        // Market cap
+        ((TOKEN_TOTAL_SUPPLY * INITIAL_VIRTUAL_SOL_RESERVES) / INITIAL_VIRTUAL_TOKEN_RESERVES)
+            as u64
     }
 
     /// Calculates the initial amount of tokens

@@ -1,8 +1,8 @@
 //! Bonding curve account for Pump tokens
 
+use crate::error::SniperError;
 use borsh::{BorshDeserialize, BorshSerialize};
 use solana_sdk::pubkey::Pubkey;
-use crate::error::SniperError;
 
 #[derive(Debug, Clone, BorshSerialize, BorshDeserialize)]
 pub struct BondingCurveAccount {
@@ -48,7 +48,11 @@ impl BondingCurveAccount {
         })
     }
 
-    pub fn get_sell_price(&self, token_amount: u64, fee_basis_points: u64) -> Result<u64, SniperError> {
+    pub fn get_sell_price(
+        &self,
+        token_amount: u64,
+        fee_basis_points: u64,
+    ) -> Result<u64, SniperError> {
         if self.complete {
             return Err(SniperError::BondingCurveComplete);
         }
@@ -72,7 +76,7 @@ impl BondingCurveAccount {
         if self.token_total_supply == 0 {
             return 0.0;
         }
-        
+
         let tokens_sold = self.token_total_supply - self.real_token_reserves;
         (tokens_sold as f64 / self.token_total_supply as f64) * 100.0
     }
